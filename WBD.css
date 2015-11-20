@@ -1,0 +1,79 @@
+.wcv{font-family:"Lucida Grande","Open Sans","Lucida Sans Unicode","sans-serif";font-size:100%;line-height:115%;clear:both}
+.wcv p, .wcv q, .wcv cite{font-style:normal;margin:0;padding:0;border:none;font-size:100%}
+.wcv em, .wcv i, .khf{font-style:italic;font-family:"Georgia","Times","Times New Roman","serif"}
+.wcv a{text-decoration:none;color:royalblue}
+.wcv a:hover{text-decoration:underline}
+.wcv q, .guv i, .emj{color:#369}
+.wcv cite{color:dimgray;font-size:90%}
+.wcv q:before{content:"\021D2\020";color:#FF7E1E;position:absolute;left:-1.1em}
+.btx+.btx{margin-top:1em}
+.yjs, .cv9, .guv, .fxe, .gpk{color:#555}
+.upo b, .yjs b, .wcv fieldset b, .gpk b, .ihl b, .qjx b, .l1v b{color:#194885;font-size:105%}
+.nek b, .xmk b{color:blue;font-size:120%}
+b.bdt:before, em.t1u:before{content:"\0B4";font-family:Helvetica;letter-spacing:-.5px;color:#CA0403;}
+em.t1u:before{font-style:normal}
+.nek, .xmk{margin-bottom:1em;clear:both}
+.dlq .xmk, .wcv fieldset .exj{margin-bottom:.2em}
+.ykc:before{content:"|";font-size:95%;font-weight:normal}
+.zxm{color:#777;font-family:Verdana;font-weight:normal;font-size:95%}
+.zxm:before{content:"\0AB"}
+.zxm:after{content:"\0BB"}
+.zxm i, .zxm em{color:#B8860B;font-family:Helvetica;font-size:90%}
+.zxm, .cyp, .wje, .ivc, .xhe{white-space:nowrap}
+.zxm b{white-space:normal}
+.c3r, .kce{color:sienna;font-family:"Trebuchet MS"}
+.khf{color:sienna;font-size:90%}
+.c3r{display:inline-block;font-weight:bold}
+.c3r span, .c3r em, .kce span, .kce em{color:black;font-weight:normal}
+.bvn+div .c3r, .ihl+div .c3r, .sms, .s3s, .duy, .duv, .ihl+.dlq, .bvn+.dlq, .ovs{margin-top:.6em}
+.bvn{counter-reset:x0j;margin-left:1.3em;position:relative}
+.l1v+.l1v, .lix{margin-top:.3em}
+.bi0+.bi0, .ljb+.ljb{margin-top:.2em}
+.wcv p+p, .duy+.duy{margin-top:.1em}
+.l1v .bi0 .v9t{position:absolute;left:-1.1em}
+.v9t, .ujn{color:#CA0403;font-family:Helvetica;font-weight:bold}
+.v9t:after, .ujn:after{content:"."}
+.l1v:before, .qhq, .ncd, .xbg{color:#1c4b8b;font-family:Helvetica;font-weight:bold;letter-spacing:-1.5px}
+.l1v:before{counter-increment:x0j;content:counter(x0j)" ";position:absolute;left:-1.3em}
+.exj, .emj{font-family:Helvetica;font-size:95%}
+.exj{position:relative;margin-left:1em}
+.rpl:after{content:"/";color:#AAA;font-size:95%}
+.u8s{font-weight:bold}
+.imi b{padding-left:3px;padding-right:3px;border-radius:2px;border:blue solid  1px;color:blue;font-size:80%;text-transform:uppercase;font-family:Verdana;line-height:100%}
+.wcv p:before, .thw:before, .s3s:before{content:"\021E8\020";}
+.duy:before{content:"-";padding-right:2px}
+.cwi{font-family:"Arial Unicode MS","Lucida Sans Unicode"}
+.gsh, .pqn{}
+.j5c, .qjx, .keq, .cov{}
+.sms, .s3s{border-top:1px dashed #CCC;padding-top:2px;clear:both}
+p+.sms{border:none}
+.wcv p{float:left;width:210px;position:relative;margin-left:1.1em}
+.wcv p:before{position:absolute;left:-1em}
+.epl{margin:1ex 0;padding:1px;background-color:#eeece1;clear:both}
+.wcv fieldset{border-radius:2px;margin:.3em}
+.wcv fieldset .kce{display:inline-block;margin-top:.3em}
+.wcv legend{color:white;font-family:Helvetica;font-weight:bold;font-variant:small-caps;font-size:110%;padding:1px 3px;letter-spacing:1px}
+.fvo{border:1.5px solid #008F56}
+.fvo legend{background-color:#009A31}
+.sgy{border:1.5px solid #F09A01}
+.sgy legend{background-color:#F5A006}
+.wcv fieldset .exj{margin-left:2em}
+.thw{display:inline-block;margin-top:.6em}
+.rg7{color:teal;font-style:italic;font-size:85%;font-family:Helvetica;letter-spacing:.5px}
+.r6h{font-size:90%}
+.g95{background-color:#F3F6F9;border-top:2px solid #6CA9D0;border-bottom:2px solid #6CA9D0;margin:1em auto;padding:2px 1ex}
+.g95+.g95{margin-top:0}
+.fph{background-color:#F3F6F9;vertical-align:middle}
+.khf:before{content:"[";font-style:normal}
+.khf:after{content:"]";font-style:normal}
+.ivc{font-family:Georgia}
+.ah7{font-size:smaller}
+.vfv{display:block}
+.icw{vertical-align:middle;position:relative;top:-2px}
+.y2c{color:maroon}
+.q3j, .igf{margin:0 1ex 1ex 1ex;position:relative;z-index:999;float:right;clear:right}
+.q3j{max-width:310px;max-height:400px}
+.igf{max-width:99%;max-height:99%}
+.wcv img+img{margin-top:1ex}
+.wcv img[onclick]{cursor:pointer}
+.xhe{text-decoration:overline}
