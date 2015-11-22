@@ -561,7 +561,7 @@ class wbd_downloader(downloader):
 
     def __getlimit(self, w, h):
         w, h = w*0.6, h*0.6
-        if w/310 >= h/400:
+        if w/320 >= h/400:
             return ''.join([' width=', str(int(w))])
         else:
             return ''.join([' height=', str(int(h))])
@@ -1594,7 +1594,7 @@ class wbd_downloader(downloader):
         if _DEBUG_:
             p = self.__rex(r'<div class="(?:nek|yjs|epl|duy)">.+?</div>', re.I)
             nline = p.sub(r'', line)
-            p = self.__rex(r'.{10}[\s>][b-z]\s.{10}')
+            p = self.__rex(r'.{10}[\s>](?:[b-z]\s|a (?:[ai]|e[^u]|o(?!nc?e\b))).{10}')
             for f in p.findall(nline):
                 self.__logs.append('W0A:\tcheck spelling\t%s\t%s' % (key, f))
             p = self.__rex(r'<div class="\w+">\W*</div>', re.I)
