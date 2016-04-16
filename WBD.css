@@ -1,4 +1,4 @@
-.wcv{font-family:"Lucida Grande","Open Sans","Lucida Sans Unicode","sans-serif";font-size:100%;line-height:115%;clear:both}
+.wcv, .kce span, .c3r span{font-family:"Lucida Grande","Open Sans","Lucida Sans Unicode","sans-serif";font-size:100%;line-height:115%;clear:both}
 .wcv p, .wcv q, .wcv cite{font-style:normal;margin:0;padding:0;border:none;font-size:100%}
 .wcv em, .wcv i, .khf{font-style:italic;font-family:"Georgia","Times","Times New Roman","serif"}
 .wcv a{text-decoration:none;color:royalblue}
@@ -6,6 +6,7 @@
 .wcv q, .guv i, .emj{color:#369}
 .wcv cite{color:dimgray;font-size:90%}
 .wcv q:before{content:"\021D2\020";color:#FF7E1E;position:absolute;left:-1.1em}
+.wcv q{quotes:none}
 .btx+.btx{margin-top:1em}
 .yjs, .cv9, .guv, .fxe, .gpk{color:#555}
 .upo b, .yjs b, .wcv fieldset b, .gpk b, .ihl b, .qjx b, .l1v b{color:#194885;font-size:105%}
@@ -20,7 +21,7 @@ em.t1u:before{font-style:normal}
 .zxm:after{content:"\0BB"}
 .zxm i, .zxm em{color:#B8860B;font-family:Helvetica;font-size:90%}
 .zxm, .cyp, .wje, .ivc, .xhe{white-space:nowrap}
-.zxm b{white-space:normal}
+.zxm b{color:#777;white-space:normal}
 .c3r, .kce{color:sienna;font-family:"Trebuchet MS"}
 .khf{color:sienna;font-size:90%}
 .c3r{display:inline-block;font-weight:bold}
@@ -42,7 +43,7 @@ em.t1u:before{font-style:normal}
 .imi b{padding-left:3px;padding-right:3px;border-radius:2px;border:blue solid  1px;color:blue;font-size:80%;text-transform:uppercase;font-family:Verdana;line-height:100%}
 .wcv p:before, .thw:before, .s3s:before{content:"\021E8\020";}
 .duy:before{content:"-";padding-right:2px}
-.cwi{font-family:"Arial Unicode MS","Lucida Sans Unicode"}
+.cwi{font-family:"Arial Unicode MS","Lucida Sans Unicode","Georgia"}
 .gsh, .pqn{}
 .j5c, .qjx, .keq, .cov{}
 .sms, .s3s{border-top:1px dashed #CCC;padding-top:2px;clear:both}
@@ -72,7 +73,7 @@ p+.sms{border:none}
 .icw{vertical-align:middle;position:relative;top:-2px}
 .y2c{color:maroon}
 .q3j, .igf{margin:0 1ex 1ex 1ex;position:relative;z-index:999;float:right;clear:right}
-.q3j{max-width:320px;max-height:400px}
+.q3j{max-width:300px;max-height:400px}
 .igf{max-width:99%;max-height:99%}
 .wcv img+img{margin-top:1ex}
 .wcv img[onclick]{cursor:pointer}
