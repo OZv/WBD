@@ -71,6 +71,10 @@ def info(l, s='word'):
     return '%d %ss' % (l, s) if l>1 else '%d %s' % (l, s)
 
 
+def make_a(k, w, cls=''):
+    return ''.join(['<a href="entry://', k.replace('/', '%2F').replace('\'', '%27'), '"', cls, '>', w, '</a>'])
+
+
 def getwordlist(file, base_dir='', tolower=True):
     words = readdata(file, base_dir)
     wordlist = OrderedDict()
@@ -250,7 +254,7 @@ class downloader:
                     fw.write('\n'.join([readdata(fn, sdir).strip(), '']))
             fw.close()
         words, phvs = [], []
-        crefs = self.load_creflist('cref.txt', dir)
+        crefs = self.load_creflist(dir)
         dump('\n'.join(crefs.keys()), ''.join([dir, 'wordlist.txt']))
         print "Formatting files..."
         self.load_correct_info()
@@ -261,6 +265,7 @@ class downloader:
         for i in xrange(1, times+1):
             args.append((self, ''.join([dir, '%d'%i, path.sep])))
         dics = pool.map(formatter, args)
+#        dics = []#For debug
 #        for i in xrange(1, times+1):#For debug
 #            formatter((self, ''.join([dir, '%d'%i, path.sep])))#For debug
         print "Start to combine files at %s" % datetime.now()
@@ -334,6 +339,25 @@ class downloader:
             dump('\n'.join(['\t'.join([k, '\t'.join(v)]) for k, v in self.lang_d.iteritems()]), 'la.txt')
             dump('\n'.join(['\t'.join([k, '\t'.join(v)]) for k, v in self.lang_d2.iteritems()]), 'la2.txt')
             dump('\n'.join(self.img_d.values()), 'img.txt')
+            lns, od = [], {}
+            for ln in fileinput.input(fullpath('World Book Dictionary_old.txt')):
+                ln = ln.strip()
+                if ln == '</>':
+                    word = lns[0].rstrip(' ,')
+                    if word.lower() in od:
+                        od[word.lower()] = ''.join([lns[1], od[word.lower()]])
+                    else:
+                        od[word.lower()] = lns[1]
+                    del lns[:]
+                elif ln:
+                    lns.append(ln)
+            t3 = OrderedDict()
+            p = re.compile(r'([\(\)\.\[\]\*\+\?\|])')
+            for k, v in self.t2.iteritems():
+                q = re.compile(''.join([r'\b', p.sub(r'\\\1', k), r'\b']), re.I)
+                if (not v in od or (v in od and not q.search(od[v]))) and not self.check2(k, v):
+                    t3[k] = v
+            dump('\n'.join(['\t'.join([v, k]) for k, v in t3.iteritems()]), 'spell.txt')
 
 
 def formatter((dic, sdir)):
@@ -420,6 +444,8 @@ class wbd_downloader(downloader):
             self.lang_d2 = OrderedDict()
             self.lang_cr = OrderedDict()
             self.img_d = OrderedDict()
+            self.t1 = OrderedDict()
+            self.t2 = OrderedDict()
 
     @property
     def base_url(self):
@@ -527,8 +553,9 @@ class wbd_downloader(downloader):
             self.__re_d[mode][ptn] = re.compile(ptn, mode) if mode else re.compile(ptn)
         return self.__re_d[mode][ptn]
 
-    def load_creflist(self, file, base_dir=''):
-        self.__crefs = self.getcreflist(file, base_dir)
+    def load_creflist(self, base_dir=''):
+        self.__crefs = self.getcreflist('cref.txt', base_dir)
+        self.__crefs2 = self.getcreflist('cref2.txt', base_dir)
         return self.__crefs
 
     def load_patch(self, base_dir=''):
@@ -561,7 +588,7 @@ class wbd_downloader(downloader):
 
     def __getlimit(self, w, h):
         w, h = w*0.6, h*0.6
-        if w/320 >= h/400:
+        if w/300 >= h/400:
             return ''.join([' width=', str(int(w))])
         else:
             return ''.join([' height=', str(int(h))])
@@ -638,7 +665,7 @@ class wbd_downloader(downloader):
             self.__spell_tbl = {}
         words = readdata('correct.txt', base_dir)
         self.__correct_list = OrderedDict()
-        self.__chrimg_list = OrderedDict()
+        self.__chrimg_list, self.__picref_list = OrderedDict(), OrderedDict()
         if words:
             p = re.compile(r'\n+(\s+\n+)?')
             words = p.sub('\n', words).strip('\n')
@@ -651,6 +678,11 @@ class wbd_downloader(downloader):
                 for k in kl:
                     if re.compile(r'^\s*@').search(k):
                         self.__chrimg_list[wr] = self.__fmt_rt(rt)
+                    elif re.compile(r'^\s*#').search(k):
+                        if wr in self.__picref_list:
+                            self.__picref_list[wr].append(rt)
+                        else:
+                            self.__picref_list[wr] = [rt]
                     elif not re.compile(r'^\s*//').search(k):
                         rt = self.__fmt_rt(rt)
                         if k in self.__correct_list:
@@ -739,7 +771,26 @@ class wbd_downloader(downloader):
         if _DEBUG_:
             if not ref.lower() in self.__crefs:
                 self.__logs.append('E02:\tx-ref not found\t%s\t%s\t%s'%(key, m.group(0), m.group(1)))
-        return ''.join([ref.replace('/', '%2F'), m.group(2), word])
+        return ''.join([ref.replace('/', '%2F').replace('\'', '%27'), m.group(2), word])
+
+    def __add_pic_ref(self, m, p, key, ref):
+        prf = self.__mk_sk(m.group(2), True)
+        sup = ''
+        q = self.__rex(r"(See\b[\w\s]+\b(?:under|at|diagram of)\b\s+)([\w\s'\-]+)$", re.I)
+        n = q.search(ref)
+        if n:
+            ss, ref = n.group(1), n.group(2)
+        else:
+            ss = 'See picture under '
+        if self.__rex(r'\d').search(ref[-1]):
+            sup = ''.join(['<sup>', ref[-1], '</sup>'])
+            ref = ref[:-1]
+        if prf.lower() == ref.lower():
+            return ''.join([ss, m.group(1), 'entry://',
+            prf.replace('\'', '%27'), '#', m.group(3), '">', ref, '</a>', sup, '. '])
+        else:
+            self.__logs.append(''.join(['!!2\t', key, '\t', prf, '\t', ref]))
+            return ''.join([m.group(1), 'entry://', prf, '#', m.group(3), '"></a>'])
 
     def __correct_data(self, key, line):
         p = self.__rex(r'(?<=\w)&verbar;(?=\w)')
@@ -755,11 +806,15 @@ class wbd_downloader(downloader):
                     else:
                         self.hc_d[h] = [key]
         if key in self.__correct_list:
+#            tp = self.__rex(r'([\(\)\.\[\]\*\+\?\|\\])')#
             for wr, rt in self.__correct_list[key]:
                 if wr.startswith('$'):
-                    line = self.__rex(wr[1:], re.I).sub(rt, line)
+                    line, n = self.__rex(wr[1:], re.I).subn(rt, line)
                 else:
                     line = line.replace(wr, rt)
+#                    line, n = self.__rex(tp.sub(r'\\\1', wr), re.I).subn(rt, line)#
+#                if n != 1:#
+#                    self.__logs.append(''.join(['$$$\t', key, '\t', wr, '\t', rt, '\t', str(n)]))#
         line = self.__trans_p.sub(lambda m: self.__trans_tbl[m.group(0)], line)
         if _DEBUG_:
             for wr, rt in self.__spell_tbl.iteritems():
@@ -776,9 +831,15 @@ class wbd_downloader(downloader):
         line = p.sub(r'\1', line)
         p = self.__rex(r'(?<=<ol>)(.+?</ol>)', re.I)
         line = p.sub(self.__corol, line)
-        p = self.__rex(r'(?<=<a href=")javascript:showEntry\(\'\s*([^<>]+?)\',\s*\'\s*(ent_[^<>]+?)\'\)" target="_top"\.?(?=[\xFF\s]*(?:</li|</?p>|<BR|<A NAME="def_[^<>"]+">))', re.I)
-        line = p.sub(lambda m: ''.join(['entry://',
-        self.__mk_sk(m.group(1), True), '#', m.group(2), '"></a>']), line)
+        p = self.__rex(r'(<a href=")javascript:showEntry\(\'\s*([^<>]+?)\',\s*\'\s*(ent_[^<>]+?)\'\)" target="_top"\s*?[\.\]]?(?=[\xFF\s]*(?:</li|</?p>|<BR|<A NAME="def_[^<>"]+">|\b(?:see )?also)|<i>)', re.I)
+        if key in self.__picref_list:
+            for ref in self.__picref_list[key]:
+                line, n = p.subn(lambda m: self.__add_pic_ref(m, p, key, ref), line, 1)
+                if n != 1:
+                    self.__logs.append(''.join(['!!1\t', key, '\t', ref]))
+        m = self.__rex(r'<a href="javascript:showEntry([^<>]+?)target="_top"\s*[^>]', re.I).search(line)
+        if m:
+            self.__logs.append(''.join(['!!3\t', key, '\t', m.group(1), '\t', line]))
         p = self.__rex(r'\s*(<a name="ety_[^<>"]+">\s*</a>)[\xFF\s]*(.+?)[\xFF\s]*(?=</?(?:BR|ol|p)\b)', re.I)
         line = p.sub(self.__corety, line)
         n = 1
@@ -795,6 +856,8 @@ class wbd_downloader(downloader):
         line = p.sub(r'\1 \2', line)
         p = self.__rex(r'<DIV ALIGN="CENTER">(.+?)</DIV>', re.I)
         line = p.sub(r'\1', line)
+        p = self.__rex(r'(</FONT>)(\s*\([^\(\)<>]+\)\.)', re.I)
+        line = p.sub(r'\2\1', line)
         return line
 
     def __trans_lower(self, m):
@@ -823,7 +886,8 @@ class wbd_downloader(downloader):
 
     def __rep_pr(self, pr):
         p = self.__rex(r'&laquo;\s*(.+?)\s*&raquo;', re.I)
-        pr = p.sub(r'<span class="zxm">\1</span>', pr)
+        q = self.__rex(r'\s*\|\s*', re.I)
+        pr = p.sub(lambda n: ''.join(['<span class="zxm">', q.sub(' ', n.group(1)), '</span>']), pr)
         p = self.__rex(r'<SMALL>(\s*)</SMALL>', re.I)
         pr = p.sub(r'\1', pr)
         return pr
@@ -884,6 +948,8 @@ class wbd_downloader(downloader):
         pron = p.sub(r'\1ular\3\2', pron)
         p = self.__rex(r'<a href="javascript:showEntry\(\'[^<>]*?see[^<>]+?below[^<>]+>(.+?)</a>', re.I)
         pron = p.sub(r'\1', pron)
+        p = self.__rex(r'<i>(\(<i>[^\(\)]+</i>\))</i>', re.I)
+        pron = p.sub(r'\1', pron)
         if _DEBUG_:
             if self.__rex('<A NAME=', re.I).search(pron):
                     self.__logs.append('E0G:\tcheck pron\t%s\t%s'%(key, pron))
@@ -919,14 +985,18 @@ class wbd_downloader(downloader):
     def __repexmp(self, exmp):
         exmp = exmp.replace('\xFF\xFF', '')
         n = exmp.count(' ')
-        if (n<2 and exmp.find('Figurative')<0) or (n==2 and self.__rex('^<i>[a-z]').search(exmp)) or\
+        if exmp.find('=') > 0:
+            exmp = self.__repeq(exmp)
+        elif (n<2 and exmp.find('Figurative')<0) or (n==2 and self.__rex('^<i>[a-z]').search(exmp)) or\
         len(self.__rex('</i>\s*[^<>\(\)\[\],\.\;\?\!\s][^<>\(\)\[\]]+?\s*(?=<i>|$)').findall(exmp)) > 1:
             return ''.join(['<span class="guv">', exmp, '</span>'])
-        elif exmp.find('=') > 0:
-            exmp = self.__repeq(exmp)
         if self.__rex(r'<i\b[^<>]*>', re.I).search(exmp):
             if exmp.find('[') > -1:
                 #</i>...[<i>...</i>]...<i>
+                p = self.__rex(r'(\w\.</i>\s*)(\[)<i>([A-Z][^<>]*)</i>(\]\s*)(<i>)')
+                exmp = p.sub(r'\1\5\2<em>\3</em>\4', exmp)
+                p = self.__rex(r'(\([^<>\(\)\[\]]+\)\.\s*)(\[)<i>([A-Z][^<>]*)</i>(\]\s*)(<i>)')
+                exmp = p.sub(r'\1\5\2<em>\3</em>\4', exmp)
                 p = self.__rex(r'</i>([^<>\[\]]*\[.+?\][^<>\[\]]*)<i>', re.I)
                 q = self.__rex(r'(</?)i(?=>)', re.I)
                 exmp = p.sub(lambda n: q.sub(r'\1em', n.group(1)), exmp)
@@ -1037,6 +1107,31 @@ class wbd_downloader(downloader):
         p = self.__rex(r'(<span class="gsh">)([\xFF\s]+)(?=<a)', re.I)
         return p.sub(r'\2\1', line)
 
+    def __w2a(self, w, cls='', b=False):
+        sk = self.__mk_sk(w, True)
+        lsk = sk.lower()
+        if lsk in self.__crefs:
+            return make_a(sk, w, cls)
+        elif lsk in self.__crefs2:
+            return make_a(self.__crefs2[lsk], w, cls)
+        elif not b:
+            lsk = self.__rex(r's$').sub('', lsk)
+            if lsk in self.__crefs:
+                return make_a(lsk, w, cls)
+            else:
+                lsk, n = self.__rex(r'(e[sd]|ing)$').subn('e', lsk)
+                if lsk in self.__crefs:
+                    return make_a(lsk, w, cls)
+                elif n:
+                    lsk = self.__rex(r'i$').sub('y', self.__rex(r'e$').sub('', lsk))
+                    if lsk in self.__crefs:
+                        return make_a(lsk, w, cls)
+                    else:
+                        lsk = self.__rex(r'(\w)\1$').sub(r'\1', lsk)
+                        if lsk in self.__crefs:
+                            return make_a(lsk, w, cls)
+        return None
+
     def __repsyn(self, m):
         syn = m.group(2)
         p = self.__rex(r'^([^<>]+?)(?=\s*(?:<a href=[^<>]+>\s*)?See\b|\s*$)')
@@ -1045,9 +1140,9 @@ class wbd_downloader(downloader):
             lns = []
             for ss in n.group(1).strip(' .').split(','):
                 ss = ss.strip()
-                sk = self.__mk_sk(ss, True)
-                if sk.lower() in self.__crefs:
-                    lns.append(''.join(['<a href="entry://', sk.replace('/', '%2F'), '">', ss, '</a>']))
+                a = self.__w2a(ss)
+                if a:
+                    lns.append(a)
                 else:
                     lns.append(ss)
             syn = p.sub(''.join([', '.join(lns), '.']), syn) if lns else syn
@@ -1061,11 +1156,21 @@ class wbd_downloader(downloader):
             if len(self.__rex('<i>', re.I).findall(f)) != len(self.__rex('</i>', re.I).findall(f)):
                 self.__logs.append('E06:\tunbalanced <i>\t%s\t%s' % (key, f))
 
+    def __repeo(self, m):
+        w, a = m.group(1), None
+        if w.lower() != 'the':
+            a = self.__w2a(w)
+        if a:
+            return ''.join(['= ', a])
+        else:
+            return m.group(0)
+
     def __b2a(self, m):
-        b = m.group(2)
-        if b.lower() in self.__crefs:
-            return ''.join([m.group(1), '<a href="entry://', b.replace('/', '%2F'), '" class="u8s">', b, '</a>'])
-        return m.group(0)
+        a = self.__w2a(m.group(2), ' class="u8s"', True)
+        if a:
+            return ''.join([m.group(1), a])
+        else:
+            return m.group(0)
 
     def __repdef(self, line, clean=False):
         p = self.__rex(r'\s*<A NAME="def_[^<>"]+">\s*</A>\s*', re.I)
@@ -1079,14 +1184,18 @@ class wbd_downloader(downloader):
         line = p.sub(r'<span class="ncd">\1</span> ', line)
         p = self.__rex(r'(<span class="(?:v9t|ncd)">[^<>]+</span>|\bAlso\b,?|</B>\W*|<span class="(?:wb-dict-headword|gpk)">(?:[^<>]|</?B\b[^<>]*>|</?NOBR>)+</span>\W*?|<span class="rg7">[^<>]+</span>\W*?)(?:<BR>|[\xFF\s])*<i>\s*([^<>]{3,}?)\s*</i>', re.I)
         line =p.sub(lambda n: self.__reprgs2(n, ' ', ''), line)
-        p = self.__rex(r'\s*<NOBR><SMALL>(\w{3})\w*\(S\):?</SMALL></NOBR>\s*(.+?)[\xFF\s]*(?=<span class="v9t">|$)', re.I)
+        p = self.__rex(r'\s*<NOBR><SMALL>(\w{3})\w*\(S\):?</SMALL></NOBR>\s*(.+?)[\xFF\s]*(?=<span class="v9t">|$|<BR>)', re.I)
         line =p.sub(self.__repsyn, line)
         line = self.__rep_ep(line)
         line = self.__rep_ps(line)
         line = self.__rep_ref(line)
+        p = self.__rex(r'^\s*=\s*([^<>\.\(\)\s][^<>\.\(\)]*\w)', re.I)
+        line = p.sub(self.__repeo, line)
         p = self.__rex(r'(<span class="(?:wb-dict-headword|gpk)">)(.+?)(?=</span>)', re.I)
         q = self.__rex(r'(\s*)<B>([a-z][^<>]+)</B>(?!<B\b)', re.I)
         line = p.sub(lambda n: ''.join([n.group(1), q.sub(self.__b2a, n.group(2))]), line)
+        p = self.__rex(r'(See (?:the )?(?:diagram|picture)s? (?:at|under|diagram of) )<b>([^<>]+)</b>', re.I)
+        line = p.sub(lambda n: ''.join([n.group(1), self.__w2a(n.group(2), '', True)]), line)
         p = self.__rex(r'(\w+[^<>]*)<B>([a-z][^<>]+)</B>(?!<B\b)', re.I)
         line = p.sub(self.__b2a, line)
         p = self.__rex(r'(_{3,})')
@@ -1094,6 +1203,20 @@ class wbd_downloader(downloader):
         cls = 'ljb' if self.__rex(r'^[\xFF\s]*<span class="v9t">').search(line) else 'bi0'
         p = self.__rex(r'(<span class="v9t">.+?)(?=<span class="v9t">|$)', re.I)
         line = p.sub(''.join(['<div class="', cls, r'">\1</div>']), line)
+        p = self.__rex(r'<i>(\(<i>[^\(\)]+</i>\))\.?</i>', re.I)
+        line = p.sub(r'\1', line)
+        p = self.__rex(r'(<B>.+?</B>)', re.I)
+        line = p.sub(lambda m: self.__rex(r'</?NOBR>', re.I).sub('', m.group(1)), line)
+        p = self.__rex(r'(?<=</B>)\s*\|\s*(<B)(?=>)', re.I)
+        line = p.sub(r'\1 class="ykc"', line)
+        if _DEBUG_:
+            p = self.__rex(r'<q>(.+?)</q>', re.I)
+            q = self.__rex(r'(\b\w{2,}\.\s*)[\w\[\(]', re.I)
+            p1 = self.__rex(r'\b(Mr|Mrs|St)\.', re.I)
+            for ex in p.findall(line):
+                m = q.search(p1.sub(r'\1', ex))
+                if m and (ex.lower().count(self.__key)>1 or (len(self.__key)>3 and ex.lower().count(self.__key[:-1])>1)):
+                    self.__logs.append(''.join(['***\t', m.group(1), '\t', ''.join([m.group(1).rstrip(), '</i> <i>']), '\t',  self.__key, '\t', ex]))
         if clean:
             line = self.cleansp(line).strip()
         return line
@@ -1104,15 +1227,10 @@ class wbd_downloader(downloader):
             line = p.sub(r'<span class="gpk">\1</span>\2 ', line)
             line = self.__rex(r'^(?:\s|</?BR/?>)+|(?:\s|</?BR/?>)+$', re.I).sub('', line)
             line = ''.join(['<div class="ihl">', self.__repdef(line, True), '</div>'])
-            p = self.__rex(r'(?<=</B>)\s*\|\s*(<B)(?=>)', re.I)
-            line = p.sub(r'\1 class="ykc"', line)
-            p = self.__rex(r'(<B>.+?</B>)', re.I)
-            line = p.sub(lambda m: self.__rex(r'</?NOBR>', re.I).sub('', m.group(1)), line)
             p = self.__rex(r'(<span class="(?:wb-dict-headword|gpk)">(?:[^<>]|</?B\b[^<>]*>)+</span>)\s*<BR>(?:<BR>|\s)*(?=\w)', re.I)
             line =p.sub(r'\1, ', line)
             p = self.__rex(r'((?:<span class="(?:wb-dict-headword|rg7|gpk)">(?:[^<>]|</?B\b[^<>]*>)+</span>|<(em|b)>[\w]+\.?</\2>)\W*?)<BR>', re.I)
             line =p.sub(r'\1 ', line)
-            line = self.__rex(r'(=\s*<a href=[^<>]+>[^<>]+</a>)\s*(?=\w)', re.I).sub(r'\1. ', line)
         return ''.join([gp1, line])
 
     def __repinfl2(self, line, key):
@@ -1224,8 +1342,8 @@ class wbd_downloader(downloader):
         phvs.append((sk, ''.join(['<link rel="stylesheet"href="', self.DIC_T,
         '.css"type="text/css"><div class="wcv">', hd, tx,
         '<span class="thw">See parent entry: <a href="entry://',
-        key.replace('/', '%2F'), '">', key, '</a></span></div>'])))
-        return ''.join(['<p><a href="entry://', sk.replace('/', '%2F'), '">',
+        key.replace('/', '%2F').replace('\'', '%27'), '">', key, '</a></span></div>'])))
+        return ''.join(['<p><a href="entry://', sk.replace('/', '%2F').replace('\'', '%27'), '">',
         self.__rex(r'</?[^<>]+>').sub('', hd), '</a></p>'])
 
     def __adjs_i(self, line):
@@ -1235,6 +1353,10 @@ class wbd_downloader(downloader):
         line = self.__rex(r'<(i|em)>(\s*)</\1>', re.I).sub(r'\2', line)
         p = self.__rex(r'<(i|em)>(\s*\(<(i|em)>[^<>]+</\3>\)\s*)</\1>', re.I)
         return p.sub(r'\2', line)
+
+    def __rep_eref(self, n):
+        a = self.__w2a(n.group(2), '', True)
+        return ''.join([n.group(1), a]) if a else n.group(0)
 
     def __repety(self, m, key):
         ety = m.group(1)
@@ -1247,6 +1369,8 @@ class wbd_downloader(downloader):
         p = self.__rex(r'(?<=<i>)([^<>]+)(?=</i>)', re.I)
         q = self.__rex(r'(\s*(?:&lt;|[\(\)])\s*)')
         ety = p.sub(lambda n: q.sub(r'</i>\1<i>', n.group(1)), ety).replace('<i></i>', '')
+        p = self.__rex(r'(etym\. (?:under|of doublets) )<B>([^<>]+)</B>', re.I)
+        ety = p.sub(self.__rep_eref, ety)
         p = self.__rex(r'(?<=\])\.?[\xFF\s]*$', re.I)
         ety, n = p.subn('</div>', ''.join(['<div class="epl">', ety]))
         if n != 1:
@@ -1348,6 +1472,11 @@ class wbd_downloader(downloader):
             key = 'play on words'
         elif key == 'secondary sex':
             key = 'secondary sex characteristic'
+        elif key == 'metapopluation theory':
+            key = 'metapopulation theory'
+            line = line.replace('metapopluation', 'metapopulation')
+        elif key == 'jelly bean shoes, jelly shoes':
+            key = 'jelly bean shoes'
         return key, line
 
     def split_entry(self, key, line):
@@ -1421,6 +1550,7 @@ class wbd_downloader(downloader):
         else:
             self.__logs.append('I03:\tThere is no HR in %s' % key)
         if _DEBUG_:
+            self.__key = key
             p = self.__rex(r'<A NAME="ent_[^<>"]+">\s*</A><span class="wb-dict-headword"><B>([^<>]+)</B></span> or <span class="wb-dict-headword"><B>\1')
             if p.search(line):
                 self.__logs.append('W09:\tcheck title\t%s'%key)
@@ -1455,7 +1585,7 @@ class wbd_downloader(downloader):
                 self.__logs.append('E04:\tcheck\t%s\t%s&#187;' % (key, m.group(1)))
         p = self.__rex(r'<i>((?:no )?\s*pl)(?:ural)?([\W]?\s*)</i>', re.I)
         line = p.sub(r'<em>\1ural</em>\2', line)
-        p = self.__rex(r'<i>(\s*(?:Abbr|Symbol|Examples?|Formula))([\W]?\s*)</i>')
+        p = self.__rex(r'<i>(\s*(?:Abbr|Symbol|Examples?|(?:Possible f|F)ormulas?))([\W]?\s*)</i>')
         line = p.sub(r'<em class="y2c">\1</em>\2', line)
         p = self.__rex(r'((?:[\xFF\s]|<BR>)*)(<i>genitive</i>[^<>]*?)((?:[\xFF\s]|<BR>)*)(<span class="wb-dict-headword">.+?</span>[^\w<>]*)', re.I)
         line = p.sub(r' \2 \4\1\3', line)
@@ -1675,23 +1805,74 @@ class wbd_downloader(downloader):
                 self.__logs.append('I07:\tlink generated\t%s\t->%s'%(sk, key))
         return sk
 
+    def __check(self, lw, key):
+        if not lw in self.t1 and not self.__rex(r'^[\d-]+$').search(lw) and lw!=key and not lw in self.__crefs and not lw in self.__crefs2:
+            return False
+        else:
+            return True
+
+    def check2(self, lw, key):
+        lsk = self.__rex(r's$').sub('', lw)
+        if self.__check(lsk, key):
+            return True
+        lsk, n = self.__rex(r'(e[sd]|ing|able)$').subn('e', lw)
+        if self.__check(lsk, key):
+            return True
+        if n:
+            lsk = self.__rex(r'i$').sub('y', self.__rex(r'e$').sub('', lsk))
+            if self.__check(lsk, key):
+                return True
+        return False
+
+    def __check_spell(self, key, line):
+        if key.startswith('word-list-'):
+            return
+        p = self.__rex(r'<div class="(?:nek|yjs|duy)">.+?</div>|<span class="c3r">.+?</span>|<sup>[^<>]+</sup>|<cite>[^<>]+</cite>', re.I)
+        line = p.sub('', line)
+        p = self.__rex(r'(?<=<div class="epl">)(.+?)(?=</div>)', re.I)
+        q = self.__rex(r'<i>.+?</i>|\(\w+\)', re.I)
+        line = p.sub(lambda n: q.sub(r'', n.group(1)), line)
+        p = self.__rex(r'<sub>[^<>]+</sub>', re.I)
+        line = p.sub('<>', line)
+        p = self.__rex(r'(?<=</em>:)\s*[\w,\s]+', re.I)
+        line = p.sub(' ', line)
+        p = self.__rex(r'([A-Z]\w+\b\s*){2,}')
+        line = p.sub(' ', line)
+        p = self.__rex(r'(?<=[^i]>)([A-Z])(?=\w)')
+        line = p.sub(lambda n: n.group(1).lower(), line)
+        p = self.__rex(r'</?(?:div|p|br|legend|fieldset)[^<>]*>', re.I)
+        line = p.sub(' ', line)
+        p = self.__rex(r'</?[^<>]+>', re.I)
+        line = p.sub('', line)
+        p = self.__rex(r'(?:^|[\s\(\[/\.])([a-z][\w\-]*\w)(?=[^&\w\-<])')
+        for w in p.findall(line):
+            lw = w.lower()
+            if not self.__check(lw, key):
+                if lw in self.t2:
+                    self.t1[lw] = None
+                    del self.t2[lw]
+                else:
+                    self.t2[lw] = key
+
     def refine(self, key, line, illu, phvs):
         if _DEBUG_:
             p = self.__rex(r'.{5,15}</?(?:font|SMALL|NOBR|BR/?)[^<>]*>', re.I)
             m = p.search(line)
             if m:
                 self.__logs.append('E0F:\tword not formated\t%s\t%s'%(key, m.group(0)))
-        if key in illu:
+            self.__check_spell(key, line)
+        imkey = key.replace('\'', '-').replace(' ', '-')
+        if imkey in illu:
             clear = 1
-            for sup in illu[key]:
+            for sup in illu[imkey]:
                 if sup:
                     p = self.__rex(''.join([r'(</span>\s*<sup>', sup, '</sup></div>)']), re.I)
                 else:
                     p = self.__rex(r'(<div class="nek">.+?</div>)', re.I)
-                line, n = self.__insert_illu(p, key, sup, line, illu)
+                line, n = self.__insert_illu(p, imkey, sup, line, illu)
                 clear = clear and n
             if clear:
-                del illu[key]
+                del illu[imkey]
         p = self.__rex(r'<div class="nek">(.+?)</div>', re.I)
         q = self.__rex(r'<span class="upo">(.+?)</span>', re.I)
         first = True
@@ -1707,12 +1888,13 @@ class wbd_downloader(downloader):
                     if self.__not_eq_key(self.__rex(r'\W').sub('', sk), self.__rex(r'\W').sub('', key)):
                         skp = sk.replace('-', ' ').split(' ')
                         sk = self.__new_sk(len(skp), key, sk)
-                    if sk.lower() in illu and '' in illu[sk.lower()]:
+                    imkey = sk.lower().replace('\'', '-').replace(' ', '-')
+                    if imkey in illu and '' in illu[imkey]:
                         rv = self.__rex(r'([\(\)\.\[\]\*\+\?\|])').sub(r'\\\1', var)
                         p = re.compile(''.join([r'(', rv, r'</span></div>)']), re.I)
-                        line, n = self.__insert_illu(p, sk.lower(), '', line, illu)
+                        line, n = self.__insert_illu(p, imkey, '', line, illu)
                         if n:
-                            del illu[sk.lower()]
+                            del illu[imkey]
                     phvs.append((sk, ''.join(['@@@LINK=', key])))
         p = self.__rex(r'<div class="(?:duv|ihl|l1v|yjs)">(.+?)</div>', re.I)
         q = self.__rex(r'<span class="upo">(.+?)(?=</span>)', re.I)
@@ -1741,8 +1923,14 @@ class wbd_downloader(downloader):
         line = p.sub(r'\1<div class="sms"></div>', line)
         return '\n'.join([key, line, '</>\n'])
 
+    def __getcref2(self, sk, ent):
+        if ent.startswith('@@@'):
+            return ent[8:]
+        else:
+            return sk
+
     def uni_phvs(self, phvs, entries, dir):
-        lns = OrderedDict()
+        lns, crefs2 = OrderedDict(), OrderedDict()
         p = self.__rex(r'<div class="j5c">(?:<span class="gsh">|<a [^<>]+>)\s*See\b', re.I)
         q = self.__rex(r'(?<=<span class="thw">)(.+?)(?=</span>)', re.I)
         a = self.__rex(r'<a[^<>]+>[^<>]+</a>', re.I)
@@ -1761,6 +1949,7 @@ class wbd_downloader(downloader):
                     oe = lns[sk]
                     if oe.startswith('@@@'):
                         lns[sk] = '\n'.join([word, ent, '</>\n'])
+                        crefs2[sk] = self.__getcref2(sk, ent)
                         self.__logs.append('I04:\tignore link %s >> %s'%(word, oe))
                     elif p.search(ent):
                         ig, ent = ent, oe
@@ -1771,13 +1960,17 @@ class wbd_downloader(downloader):
                     if ig:
                         prt = ', '.join(a.findall(q.search(ig).group(1)))
                         lns[sk] = q.sub(''.join([r'\1, ', prt]), ent)
+                        crefs2[sk] = self.__getcref2(sk, ent)
                         self.__logs.append('I06:\tignore phv %s=%s'%(word, ig))
                     else:
                         lns[sk] = ''.join([oe, word, '\n', ent, '\n</>\n'])
+                        crefs2[sk] = self.__getcref2(sk, ent)
                         self.__logs.append('I08:\tcombine dulplicate phvs, check %s'%word)
             else:
                 lns[sk] = '\n'.join([word, ent, '</>\n'])
+                crefs2[sk] = self.__getcref2(sk, ent)
         dump('\n'.join(lns.keys()), ''.join([dir, 'phrases.txt']))
+        dump(''.join(['\n'.join(['\t'.join([k, v]) for k, v in crefs2.iteritems()]), '\n']), ''.join([dir, 'cref2.txt']))
         return lns.values()
 
 
