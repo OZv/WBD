@@ -1157,11 +1157,12 @@ class wbd_downloader(downloader):
                 self.__logs.append('E06:\tunbalanced <i>\t%s\t%s' % (key, f))
 
     def __repeo(self, m):
-        w, a = m.group(1), None
+        w, a = m.group(2), None
         if w.lower() != 'the':
             a = self.__w2a(w)
         if a:
-            return ''.join(['= ', a])
+            rg = ''.join([m.group(1), ' ']) if m.group(1) else ''
+            return ''.join([rg, '= ', a])
         else:
             return m.group(0)
 
@@ -1189,7 +1190,7 @@ class wbd_downloader(downloader):
         line = self.__rep_ep(line)
         line = self.__rep_ps(line)
         line = self.__rep_ref(line)
-        p = self.__rex(r'^\s*=\s*([^<>\.\(\)\s][^<>\.\(\)]*\w)', re.I)
+        p = self.__rex(r'^((?:<span class="rg7">[^<>]+</span>)?)[\xFF\s]*=[\xFF\s]*([^<>\.\(\)\s][^<>\.\(\)]*\w)', re.I)
         line = p.sub(self.__repeo, line)
         p = self.__rex(r'(<span class="(?:wb-dict-headword|gpk)">)(.+?)(?=</span>)', re.I)
         q = self.__rex(r'(\s*)<B>([a-z][^<>]+)</B>(?!<B\b)', re.I)
@@ -1595,7 +1596,7 @@ class wbd_downloader(downloader):
         line = p.sub(lambda m: self.__repinfl(m, key), line)
         line, n = self.__rex(r'(?<=<li>)(?:[\xFF\s]|<A NAME="def_[^<>]+"></A>)*(?=Also\b)', re.I).subn('', line)
         p = self.__rex(r'(?<!<li>)(Also\b,?[\xFF\s]*(?:<i>[^<>]+</i>[\xFF\s]*)?)((?:[^<>]{0,10}?(?:before vowels.\s*Also,\s*)?<span class="wb-dict-headword">(?:</?B\b[^<>]*>|</?NOBR>|[^<>])+</span>)+\s*(?:before vowels|\(for\b[^<>\(\)]+\))?\s*[^<>\w]*)(</li></ol>)', re.I)
-        line =p.sub(self.__fix_var, line)
+        line = p.sub(self.__fix_var, line)
         if _DEBUG_:
             p = self.__rex(r'<span class="wb-dict-headword">(?:</?B\b[^<>]*>|</?NOBR>|[^<>])+</span>[^<>]{0,20}</li></ol>', re.I)
             for f in p.findall(line):
@@ -1606,7 +1607,7 @@ class wbd_downloader(downloader):
                 if q.search(f):
                     self.__logs.append('E0K:\tcheck drv\t%s'%key)
         p = self.__rex(r'(?:[\xFF\s]|<BR>)*<NOBR>\s*&ndash;\s*(<span class="wb-dict-headword">(?:[^<>]|</?(?:B|em)\b[^<>]*>)+</span>)\s*</NOBR>(.*?)\s*(?=</?(?:BR|ol|p|table)\b)', re.I)
-        line =p.sub(self.__repdrv, line)
+        line = p.sub(self.__repdrv, line)
         p = self.__rex(r'\s*<A NAME="use_[^<>"]+">\s*</A>\s*(.+?)(?=<BR>\s+<BR>|<BR><A NAME|</?(?:fieldset|ol|p)\b)', re.I)
         line, fn1 =p.subn(lambda m: self.__repnote(m, 'fvo', '@'), line)
         p = self.__rex(r'\s*(<NOBR><I><B>\s*&ndash;\s*Synonym.+?)(?=<BR>\s+<BR>|<BR><A NAME|</?(?:fieldset|ol|p)\b)', re.I)
@@ -1705,6 +1706,7 @@ class wbd_downloader(downloader):
         line = p.sub(r'<span class="cyp">\1<span class="xhe">\2</span></span>', line)
         p = self.__rex(r'(?<=<span class="c3r">)\s*([^<>]+?)[,;\.\s]*(?=</span>)', re.I)
         line = p.sub(self.__trans_pos, line)
+        line = self.__rex(r'(<span class="c3r">[\w\s]{4,})\.?(</span>)\.?', re.I).sub(r'\1\2', line)
         p = self.__rex(r'(?<=<span class="rg7">)([^<>]+)(?=</span>)', re.I)
         line = p.sub(lambda m: self.__rex(r'([\(\)])').sub(r'<span>\1</span>', m.group(1)), line)
         p = self.__rex(r'(?<=#</div><div class=")dlq(">.+?)@(?=</div>)', re.I)
@@ -1911,6 +1913,7 @@ class wbd_downloader(downloader):
                 sk = sk.strip()
                 if sk and self.__not_eq_key(sk, key):
                     phvs.append((sk, ''.join(['@@@LINK=', key])))
+        line = self.__rex(r'(?<=,)[\xFF\s]*</div>[\xFF\s]*<div class="duy">\s*', re.I).sub(r' ', line)
         p = self.__rex(r'(<div class="j5c">.+?</div>)@(?=</div>)', re.I)
         line = p.sub(r'\1', line)
         p = self.__rex(r'<div class="a4p">(<div class="xmk">.+?</div>)(<div class="j5c">.+?</div>)#</div>', re.I)
