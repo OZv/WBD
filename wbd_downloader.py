@@ -265,10 +265,11 @@ class downloader:
         patch, supp = self.load_patch(dir), self.load_supp_words(dir)
         crefs.update([(k, k) for k in patch.keys()])
         crefs.update([(k, k) for k in supp.keys()])
-        pool, args = Pool(25 if times>25 else times), []
-        for i in xrange(1, times+1):
+        dics = [formatter((self, ''.join([dir, '%d'%1, path.sep])))]
+        pool, args = Pool(5), []
+        for i in xrange(2, times+1):
             args.append((self, ''.join([dir, '%d'%i, path.sep])))
-        dics = pool.map(formatter, args)
+        dics.extend(pool.map(formatter, args))
 #        dics = []#For debug
 #        for i in xrange(1, times+1):#For debug
 #            formatter((self, ''.join([dir, '%d'%i, path.sep])))#For debug
